@@ -38,9 +38,6 @@ CREATE TABLE NhaCungCap (
     DiaChi NVARCHAR(255)
 );
 
--- ========================
--- 5. KHO
--- ========================
 CREATE TABLE Kho (
     MaKho CHAR(10) PRIMARY KEY,
     TenKho NVARCHAR(150) NOT NULL,
