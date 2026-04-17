@@ -3,7 +3,6 @@ GO
 USE QuanLyCuaHang;
 GO
 
--- tao bang
 CREATE TABLE NhanVien (
     MaNhanVien CHAR(10) PRIMARY KEY,
     TenNhanVien NVARCHAR(100) NOT NULL,
