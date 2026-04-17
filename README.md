@@ -2,6 +2,7 @@
 Repos này sử dụng dữ liệu ảo để phục vụ cho môn hệ quan trị cơ sở dữ liệu.
 
 Cách sử dụng repos
+
 cách 1:
     clone repos về mày tính cá nhân:
     git clone https://github.com/TranMinhCuong-Tech/QuanLyCuaHang.git
