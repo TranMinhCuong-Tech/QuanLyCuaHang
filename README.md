@@ -9,10 +9,10 @@ cách 1:
     vào SSMS (SQL Server Management)
     click chuột phải chọn Databases --> Attach... --> Add... --> chọn file QuanLyCuaHang.mdf và file QuanLyCuaHang_log.ldf --> OK
 
-cách 2: (nếu cách 1 không thực hiện đươc)
+cách 2: (nếu cách 1 không thực hiện được)
     clone repos về mày tính cá datasdatas
     thực hiện theo thứ tự sau:
         tạo database:
             New Query --> copy nội dung trong file create_database.sql --> dán vào New Query --> chọn toàn bộ nội dung --> nhấn phím F5 hoặc click chuột chọn Execute
-        nạp data ảoảo:
+        nạp data ảo:
             New Query --> copy nội dung trong file create_virtual_datas.sql --> dán vào New Query --> chọn toàn bộ nội dung --> nhấn phím F5 hoặc click chuột chọn Execute
