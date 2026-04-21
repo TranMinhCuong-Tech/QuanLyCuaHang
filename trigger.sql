@@ -131,3 +131,187 @@ begin
 	insert into KhachHang
 	select * from inserted;
 end;
+
+--them nhan vien moi (>= 18 tuoi)
+create or alter trigger trg_CheckNhanVien
+on NhanVien
+instead of insert
+as
+begin
+	set nocount on;
+	begin try
+		if exists (
+			select 1 from inserted as i
+			join NhanVien as nv on i.MaNhanVien = nv.MaNhanVien
+		)
+		begin
+			raiserror(N'Ma nhan vien da ton tai',16,1);
+			rollback;
+			return;
+		end
+
+		if exists (
+			select 1 from inserted as i
+			join NhanVien as nv on i.SoDienThoai = nv.SoDienThoai
+		)
+		begin
+			raiserror(N'SO dien thoai da ton tai',16,1);
+			rollback;
+			return;
+		end
+
+		if exists (
+			select 1 from inserted as i
+			join NhanVien as nv on i.Email = nv.Email
+		)
+		begin
+			raiserror(N'Email da ton tai',16,1);
+			rollback;
+			return;
+		end
+
+		if exists (
+			select 1 from inserted
+			where datediff(year, NgaySinh, getdate()) < 18
+				or datediff(year, NgaySinh, getdate()) > 65
+		)
+		begin
+			raiserror(N'TUoi nhan vien khong hop le', 16, 1);
+			rollback;
+			return;
+		end
+
+		if exists (
+			select 1 from inserted as i
+			where datediff(year, NgaySinh, NgayVaoLam) < 18
+		)
+		begin
+			raiserror(N'Nhan vien chu du 18 tuo khi vao lam', 16,1);
+			rollback;
+			return;
+		end
+
+		if exists (
+			select 1 from inserted
+			where Luong < 0
+		)
+		begin
+			raiserror(N'Luong khong hop le', 16,1);
+			rollback;
+			return;
+		end
+
+		insert into NhanVien (MaNhanVien, TenNhanVien, SoDienThoai, Email, ChucVu, NgaySinh, NgayVaoLam, Luong)
+		select MaNhanVien, TenNhanVien, SoDienThoai, Email, ChucVu, NgaySinh, NgayVaoLam, Luong
+		from inserted
+	end try
+	begin catch
+		rollback;
+		print error_message();
+	end catch
+end;
+
+--trigger kiem tra danh muc
+create or alter trigger trg_DanhMuc_Check
+on DanhMuc
+instead of insert
+as begin
+	set nocount on
+	begin try
+		if exists (
+			select 1
+			from inserted as i
+			join DanhMuc as dm on i.TenDanhMuc = dm.MaDanhMuc
+		)
+		begin
+			raiserror(N'Ten danh muc da ton tai',16, 1);
+			rollback;
+			return;
+		end
+
+		insert into DanhMuc
+		select * from inserted;
+
+	end try
+	begin catch
+		rollback;
+		print error_message();
+	end catch
+end;
+
+--trigger them nha cung cap
+create or alter trigger trg_NCC_Check
+on NhaCungCap
+instead of insert
+as
+begin
+	set nocount on;
+	 begin try
+		if exists (
+			select 1 from inserted
+			where Email not like '%@%.%'
+		)
+		begin
+			raiserror(N'Email khong hop le', 16,1);
+			rollback;
+			return;
+		end
+
+		if exists (
+			select 1 from inserted
+			where len(SoDienThoai) <> 10
+		)
+		begin
+			raiserror(N'So dien thoai khong hop le', 16, 1)
+			rollback;
+			return;
+		end
+
+		insert into NhaCungCap
+		select * from inserted;
+
+	end try
+	begin catch
+		rollback;
+		print error_message();
+	end catch
+end;
+
+--trigger nhap hang
+create or alter trigger trg_NhaHang_Check
+on NhapHang
+instead of insert
+as
+begin
+	set nocount on;
+	begin try
+		if exists (
+			select 1 from inserted
+			where NgayNhap > getdate()
+		)
+		begin
+			raiserror(N'Ngay nhap hang khong hop le', 16,1);
+			rollback;
+			return;
+		end
+
+		if exists(
+			select 1 from inserted as i
+			left join NhaCungCap as ncc on i.MaNhaCungCap = ncc.MaNhaCungCap
+			where ncc.MaNhaCungCap is null
+		)
+		begin
+			raiserror(N'Nha cung cap khong ton tai', 16,1);
+			rollback;
+			return;
+		end
+
+		insert into NhapHang
+		select * from inserted;
+
+	end try
+	begin catch
+		rollback;
+		print error_message();
+	end catch
+end;
