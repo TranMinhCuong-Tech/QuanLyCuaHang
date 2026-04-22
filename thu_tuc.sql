@@ -33,38 +33,17 @@ begin
     begin tran;
     begin try
         declare @Ton int, @Gia decimal(12,2);
-
-        -- kiểm tra tồn kho
         select @Ton = dbo.fn_TonKho(@MaSanPham);
 
         if @Ton < @SoLuong
             throw 50001, N'Khong du hang', 1;
 
-        -- lấy giá
         select @Gia = DonGia 
         from SanPham
         where MaSanPham = @MaSanPham;
 
-        insert into HoaDon (
-            MaHoaDon,
-            MaKhachHang,
-            MaNhanVien,
-            MaSanPham,
-            NgayLap,
-            SoLuong,
-            DonGia,
-            TongTien
-        )
-        values (
-            @MaHoaDon,
-            @MaKhachHang,
-            @MaNhanVien,
-            @MaSanPham,
-            getdate(),
-            @SoLuong,
-            @Gia,
-            @SoLuong * @Gia
-        );
+        insert into HoaDon (MaHoaDon, MaKhachHang, MaNhanVien, MaSanPham, NgayLap, SoLuong, DonGia, TongTien)
+        values (@MaHoaDon, @MaKhachHang, @MaNhanVien, @MaSanPham, getdate(), @SoLuong, @Gia, @SoLuong * @Gia);
 
         commit;
     end try
@@ -89,39 +68,11 @@ begin
     begin tran;
 
     begin try
-        -- insert NhapHang (đủ cột)
-        insert into NhapHang (
-            MaNhapHang,
-            MaKho,
-            MaNhanVien,
-            MaNhaCungCap,
-            MaSanPham,
-            NgayNhap,
-            SoLuong
-        )
-        values (
-            @MaNhapHang,
-            @MaKho,
-            @MaNhanVien,
-            @MaNCC,
-            @MaSanPham,
-            getdate(),
-            @SoLuong
-        );
+        insert into NhapHang (MaNhapHang, MaKho, MaNhanVien, MaNhaCungCap, MaSanPham, NgayNhap, SoLuong)
+        values (@MaNhapHang, @MaKho, @MaNhanVien, @MaNCC, @MaSanPham, getdate(), @SoLuong);
 
-        -- insert ChiTietNhapHang (đủ cột)
-        insert into ChiTietNhapHang (
-            MaNhapHang,
-            MaSanPham,
-            SoLuong,
-            DonGiaNhapHang
-        )
-        values (
-            @MaNhapHang,
-            @MaSanPham,
-            @SoLuong,
-            @DonGia
-        );
+        insert into ChiTietNhapHang ( MaNhapHang,MaSanPham, SoLuong, DonGiaNhapHang )
+        values (@MaNhapHang, @MaSanPham, @SoLuong,  @DonGia);
 
         commit;
     end try
@@ -159,22 +110,8 @@ begin
         from HoaDon
         where MaHoaDon = @MaHoaDon;
 
-        insert into ThanhToan (
-            MaThanhToan,
-            MaHoaDon,
-            MaKhachHang,
-            NgayThanhToan,
-            PhuongThucThanhToan,
-            SoTien
-        )
-        values (
-            @MaThanhToan,
-            @MaHoaDon,
-            @MaKhachHang,
-            getdate(),
-            @PhuongThuc,
-            @SoTien
-        );
+        insert into ThanhToan ( MaThanhToan, MaHoaDon, MaKhachHang, NgayThanhToan, PhuongThucThanhToan, SoTien )
+        values ( @MaThanhToan, @MaHoaDon, @MaKhachHang,getdate(), @PhuongThuc,  @SoTien);
 
         commit;
     end try
@@ -227,14 +164,8 @@ begin
 			where MaNhanVien = @MaNhanVien)
 			throw 50001, N'Ma nhan vien da ton tai',1;
 		insert into NhanVien
-		values (@MaNhanVien, 
-				@TenNhanVien,
-				@SoDienThoai,
-				@Email,
-				@ChucVu,
-				@NgaySinh,
-				@NgayVaoLam,
-				@Luong);
+		values (@MaNhanVien, @TenNhanVien,@SoDienThoai,@Email,@ChucVu,@NgaySinh,@NgayVaoLam,@Luong);
+
 		commit;
 	end try
 	begin catch
@@ -286,13 +217,8 @@ begin
 			where MaSanPham = @MaSanPham)
 			throw 50001, N'San pahm da ton tai', 1;
 		insert into SanPham
-		values (@MaSanPham, 
-				@TenSanPham, 
-				@DonGia, 
-				@MaDanhMuc,
-				@MaNCC,
-				@MaKho,
-				@SoLuong);
+		values (@MaSanPham, @TenSanPham, @DonGia, @MaDanhMuc,@MaNCC,@MaKho,@SoLuong);
+
 		commit;
 	end try
 	begin catch
@@ -314,7 +240,7 @@ begin
 		where MaSanPham = @MaSanPham;
 		
 		if @@rowcount = 0
-			throw 5005, N'Khong tim thay san pham', 1;
+			throw 50005, N'Khong tim thay san pham', 1;
 
 		commit;
 	end try

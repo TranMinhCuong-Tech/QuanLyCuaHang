@@ -125,7 +125,7 @@ begin
 		join KhachHang as kh on i.Email = kh.Email
 	)
 	begin
-		throw 5009, N'Email da ton tai trong he thong',1;
+		throw 50009, N'Email da ton tai trong he thong',1;
 	end
 
 	insert into KhachHang
