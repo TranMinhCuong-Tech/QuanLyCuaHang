@@ -1,24 +1,40 @@
 use QuanLyCuaHang;
 go
 
---tinh ton kho
-create or alter function fn_TonKho (@MaSanPham char(10))
-returns int
-as
-begin
-	declare @Nhap int = 0, @Ban int = 0;
-	select @Nhap = isnull(sum(SoLuong),0)
-	from ChiTietNhapHang
-	where MaSanPham = @MaSanPham
+CREATE FUNCTION dbo.fn_TonKho (@MaSanPham char(10))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Nhap INT = 0, @Ban INT = 0;
 
-	select @Ban = isnull(sum(SoLuong),0)
-	from ChiTietNhapHang
-	where MaSanPham = @MaSanPham
-	return (@Nhap - @Ban)
-end;
+    SELECT @Nhap = ISNULL(SUM(SoLuong),0)
+    FROM ChiTietNhapHang
+    WHERE MaSanPham = @MaSanPham;
+
+    SELECT @Ban = ISNULL(SUM(SoLuong),0)
+    FROM ChiTietHoaDon
+    WHERE MaSanPham = @MaSanPham;
+
+    RETURN (@Nhap - @Ban);
+END;
+GO 
+
+select * from ChiTietNhapHang as ctnh
+where ctnh.MaSanPham like 'SP01A';
+
+select * from ChiTietHoaDon as cthd
+where cthd.MaSanPham like 'SP01A';
+
+select dbo.fn_TonKho('SP01A') as TonKho
+from ChiTietNhapHang
+where MaSanPham like 'SP01A';
+
+
+--====================================================================
+
 
 --thu tuc ban hang
-create or alter procedure sp_BanHang
+create procedure sp_BanHang
     @MaHoaDon char(10),
     @MaKhachHang char(10),
     @MaNhanVien char(10),
@@ -53,6 +69,20 @@ begin
     end catch
 end;
 
+EXEC sp_BanHang 
+    'HD010', 'KH01A', 'NV04D', 
+    'SP05E', 10;
+
+EXEC sp_BanHang 
+    'HD010', 'KH01A', 'NV04D', 
+    'SP05E', 1000;
+
+SELECT DISTINCT MaSanPham
+FROM HoaDon
+WHERE MaKhachHang = 'KH01A';
+
+--==========================================================
+
 --thu tuc nhap hang
 create or alter procedure sp_NhapHang
     @MaNhapHang char(10),
@@ -82,13 +112,14 @@ begin
     end catch
 end;
 
---thu tuc ton kho
-create or alter procedure sp_KiemTraTonKho
-	@MaSanPham char(10)
-as
-begin
-	select dbo.fn_TonKho(@MaSanPham) as SoLuongTon;
-end
+EXEC dbo.sp_NhapHang 
+    'NH01A', 'K01A', 'NV01A', 'NCC01A', 
+    'SP01A', 100, 50000;
+
+select * from NhapHang nh
+where nh.MaSanPham like 'SP01A';
+
+--======================================================
 
 --thu tuc thanh toan
 create or alter procedure sp_ThanhToan
@@ -121,6 +152,18 @@ begin
     end catch
 end;
 
+EXEC sp_ThanhToan
+    'TT02A', 'HD01A', N'Tien mat';
+
+select * from HoaDon
+where MaHoaDon like 'HD01A';
+
+select * from ThanhToan
+where MaThanhToan like 'TT02A';
+
+
+--==========================================================
+
 --thu tuc thong ke doanh thu
 create or alter procedure sp_DoanhThu
 as
@@ -130,6 +173,11 @@ begin
 	from HoaDon
 	group by cast(NgayLap as date)
 end;
+
+EXEC sp_DoanhThu
+
+
+--==========================================================
 
 --thu tuc top san pham
 create or alter procedure sp_TopSanPham
@@ -143,10 +191,14 @@ begin
 	order by TongBan desc;
 end;
 
+exec sp_TopSanPham;
+
+--==================================================================
+
 --them nhan vien
 create or alter procedure sp_ThemNhanVien
 	@MaNhanVien char(10),
-	@TenNhanVien char(10),
+	@TenNhanVien nvarchar(10),
 	@SoDienThoai varchar(15),
 	@Email varchar(100),
 	@ChucVu nvarchar(100),
@@ -174,6 +226,21 @@ begin
 	end catch
 end;
 
+exec sp_ThemNhanVien 
+	'NV002', 
+	'cuong', 
+	'0922611334', 
+	'cuong@gmail.com',
+	'Quan Ly', 
+	'2000-05-10', 
+	'2024-01-01', 
+	8000000;
+
+select * from NhanVien
+where MaNhanVien like 'NV005';
+
+--====================================================================
+
 --xoa nhan vien
 create or alter procedure sp_XoaNhanVien
 	@MaNhanVien char(10)
@@ -196,6 +263,13 @@ begin
 		print error_message();
 	end catch
 end;
+
+exec sp_XoaNhanVien 'NV005';
+
+select * from NhanVien
+where MaNhanVien like 'NV005';
+
+--====================================================================
 
 --them san pham
 create or alter procedure sp_ThemSanPham
@@ -227,6 +301,15 @@ begin
 	end catch
 end;
 
+EXEC sp_ThemSanPham 'SP01',N'Iphone 15',25000000,'DM01A','NCC01A','K01A',50;
+
+
+select * from SanPham
+where MaSanPham like 'SP01';
+
+
+--==============================================================================
+
 --xoa san pham
 create or alter proc sp_XoaSanPHam
 	@MaSanPham char(10)
@@ -249,3 +332,8 @@ begin
 		print error_message();
 	end catch
 end;
+
+exec sp_XoaSanPHam 'SP01';
+
+select * from SanPham
+where MaSanPham like 'SP01';
