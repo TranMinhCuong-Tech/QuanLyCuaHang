@@ -106,7 +106,7 @@ where MaSanPham like 'SP01A';
 --trigger rollback khi thanh toan sai tien
 CREATE OR ALTER TRIGGER trg_ThanhToan_Update_Check
 ON ThanhToan
-AFTER UPDATE
+AFTER UPDATE, insert
 AS
 BEGIN
     SET NOCOUNT ON;
