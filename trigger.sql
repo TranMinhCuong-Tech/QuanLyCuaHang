@@ -110,7 +110,8 @@ AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    -- neu tang thai thanh toan da hoan thanh --> khong update
+
+    --neu hoa don da hoan thanh --> khong update
     IF EXISTS (
         SELECT 1
         FROM inserted i
@@ -124,8 +125,7 @@ BEGIN
         RETURN;
     END;
 
-    -- kiem tra so tien can thanh toan
-    -- neu thieu tien
+    --neu thanh toan thieu tien --> rollback
     IF EXISTS (
         SELECT 1
         FROM inserted i
@@ -139,7 +139,7 @@ BEGIN
         RETURN;
     END;
 
-    --  neu so tien thanh toan dung --> cap nhat trang thai hoan thanh
+    --neu thanh toan du tien --> cap nhat trang thai
     UPDATE tt
     SET TrangThaiThanhToan = N'Hoan Thanh'
     FROM ThanhToan tt
@@ -149,7 +149,7 @@ BEGIN
         ON i.MaHoaDon = hd.MaHoaDon
     WHERE i.SoTien = hd.TongTien;
 
-    -- neu so tien lon hon --> in ra tien thua
+    --neu thanh toan thua tien --> cap nhat trang thai + in thi thua
     IF EXISTS (
         SELECT 1
         FROM inserted i
@@ -158,6 +158,18 @@ BEGIN
         WHERE i.SoTien > hd.TongTien
     )
     BEGIN
+
+        --cap nhat trang thai
+        UPDATE tt
+        SET TrangThaiThanhToan = N'Hoan Thanh'
+        FROM ThanhToan tt
+        JOIN inserted i 
+            ON tt.MaThanhToan = i.MaThanhToan
+        JOIN HoaDon hd 
+            ON i.MaHoaDon = hd.MaHoaDon
+        WHERE i.SoTien > hd.TongTien;
+
+		--tinh tien thua
         DECLARE @TienThua DECIMAL(12,2);
 
         SELECT @TienThua = i.SoTien - hd.TongTien
@@ -165,15 +177,50 @@ BEGIN
         JOIN HoaDon hd 
             ON i.MaHoaDon = hd.MaHoaDon;
 
-        PRINT N'So tien thua: ' + CAST(@TienThua AS NVARCHAR);
+        PRINT N'So tien thua: ' 
+              + CAST(@TienThua AS NVARCHAR);
+
     END;
 
 END;
 
 --thong tin hoa don dua thanh toan
-select * from ThanhToan tt
-where TrangThaiThanhToan like 'Chua Hoan Thanh';
+select * from ThanhToan tt;
 
+--thuc hien thanh toan hoa don co TrangThaiHoanThanh la 'Hoan Thanh'
+UPDATE ThanhToan
+SET SoTien = 40000
+WHERE MaThanhToan = 'TT01A';
+
+--thuc hien thanh toan hoa don co TrangThaiHoanThanh la 'Chua Hoan Thanh'
+UPDATE ThanhToan
+SET SoTien = 18000
+WHERE MaThanhToan = 'TT02B';
+
+--Trang thai sau khi thanh toan
+select tt.MaThanhToan, tt.TrangThaiThanhToan from ThanhToan tt
+where tt.MaThanhToan like 'TT02B';
+
+--thuc hien thanh toan hoa don khong du tien so voi hoa don
+UPDATE ThanhToan
+SET SoTien = 1000
+WHERE MaThanhToan = 'TT05E';
+
+--Trang thai sau khi thanh toan
+select tt.MaThanhToan, tt.TrangThaiThanhToan from ThanhToan tt
+where tt.MaThanhToan like 'TT05E';
+
+--thuc hien thanh toan hoa don voi so tien lon hon so voi hoa don
+UPDATE ThanhToan
+SET SoTien = 10000
+WHERE MaThanhToan = 'TT05E';
+
+--Trang thai sau khi thanh toan
+select tt.MaThanhToan, tt.TrangThaiThanhToan from ThanhToan tt
+where tt.MaThanhToan like 'TT05E';
+
+
+--=======================================================================
 
 
 --trigger kiem tra email
@@ -206,7 +253,15 @@ begin
 	select * from inserted;
 end;
 
---them nhan vien moi (>= 18 tuoi)
+select * from KhachHang k;
+
+--them khach hang co mail da ton tai
+insert into KhachHang (MaKhachHang, TenKhachHang, SoDienThoai, Email, DiaChi)
+values('KH012', 'Khach 21', '0921115121', 'kh1@mail.com','HCM');
+
+--=================================================================================
+
+--them nhan vien moi (>= 18 tuoi và < 65 tuoi)
 create or alter trigger trg_CheckNhanVien
 on NhanVien
 instead of insert
@@ -245,22 +300,21 @@ begin
 		end
 
 		if exists (
-			select 1 from inserted
-			where datediff(year, NgaySinh, getdate()) < 18
-				or datediff(year, NgaySinh, getdate()) > 65
+			select 1 from inserted as i
+			where datediff(year, NgaySinh, NgayVaoLam) < 18
 		)
 		begin
-			raiserror(N'TUoi nhan vien khong hop le', 16, 1);
+			raiserror(N'Nhan vien chu du 18 tuoi', 16,1);
 			rollback;
 			return;
 		end
 
 		if exists (
 			select 1 from inserted as i
-			where datediff(year, NgaySinh, NgayVaoLam) < 18
+			where datediff(year, NgaySinh, NgayVaoLam) > 65
 		)
 		begin
-			raiserror(N'Nhan vien chu du 18 tuo khi vao lam', 16,1);
+			raiserror(N'Nhan vien co tuoi qua cao de lam viec', 16,1);
 			rollback;
 			return;
 		end
@@ -285,107 +339,26 @@ begin
 	end catch
 end;
 
---trigger kiem tra danh muc
-create or alter trigger trg_DanhMuc_Check
-on DanhMuc
-instead of insert
-as begin
-	set nocount on
-	begin try
-		if exists (
-			select 1
-			from inserted as i
-			join DanhMuc as dm on i.TenDanhMuc = dm.MaDanhMuc
-		)
-		begin
-			raiserror(N'Ten danh muc da ton tai',16, 1);
-			rollback;
-			return;
-		end
 
-		insert into DanhMuc
-		select * from inserted;
+--danh sach nhan vien
+select * from NhanVien;
 
-	end try
-	begin catch
-		rollback;
-		print error_message();
-	end catch
-end;
+--them nhan vien co MaNhanVien trung
+insert into NhanVien(MaNhanVien, TenNhanVien, SoDienThoai, Email, ChucVu, NgaySinh, NgayVaoLam, Luong)
+values ('NV20T', 'Tran Minh Cuong', '0923435353', 'tmc@mail.com','Manager', '2002-06-30', getdate(),2000);
 
---trigger them nha cung cap
-create or alter trigger trg_NCC_Check
-on NhaCungCap
-instead of insert
-as
-begin
-	set nocount on;
-	 begin try
-		if exists (
-			select 1 from inserted
-			where Email not like '%@%.%'
-		)
-		begin
-			raiserror(N'Email khong hop le', 16,1);
-			rollback;
-			return;
-		end
+--them nhan vien duoi 18 tuoi
+insert into NhanVien(MaNhanVien, TenNhanVien, SoDienThoai, Email, ChucVu, NgaySinh, NgayVaoLam, Luong)
+values ('NV21T', 'Tran Minh Cuong', '0923435353', 'tmc@mail.com','Manager', '2022-06-30', getdate(),2000);
 
-		if exists (
-			select 1 from inserted
-			where len(SoDienThoai) <> 10
-		)
-		begin
-			raiserror(N'So dien thoai khong hop le', 16, 1)
-			rollback;
-			return;
-		end
+--them nhan vien tren 65 tuoi
+insert into NhanVien(MaNhanVien, TenNhanVien, SoDienThoai, Email, ChucVu, NgaySinh, NgayVaoLam, Luong)
+values ('NV21T', 'Tran Minh Cuong', '0923435353', 'tmc@mail.com','Manager', '1945-06-30', getdate(),2000);
 
-		insert into NhaCungCap
-		select * from inserted;
+--them nhan vien
+insert into NhanVien(MaNhanVien, TenNhanVien, SoDienThoai, Email, ChucVu, NgaySinh, NgayVaoLam, Luong)
+values ('NV21T', 'Tran Minh Cuong', '0923435353', 'tmc@mail.com','Manager', '2000-06-30', getdate(),2000);
 
-	end try
-	begin catch
-		rollback;
-		print error_message();
-	end catch
-end;
-
---trigger nhap hang
-create or alter trigger trg_NhaHang_Check
-on NhapHang
-instead of insert
-as
-begin
-	set nocount on;
-	begin try
-		if exists (
-			select 1 from inserted
-			where NgayNhap > getdate()
-		)
-		begin
-			raiserror(N'Ngay nhap hang khong hop le', 16,1);
-			rollback;
-			return;
-		end
-
-		if exists(
-			select 1 from inserted as i
-			left join NhaCungCap as ncc on i.MaNhaCungCap = ncc.MaNhaCungCap
-			where ncc.MaNhaCungCap is null
-		)
-		begin
-			raiserror(N'Nha cung cap khong ton tai', 16,1);
-			rollback;
-			return;
-		end
-
-		insert into NhapHang
-		select * from inserted;
-
-	end try
-	begin catch
-		rollback;
-		print error_message();
-	end catch
-end;
+--kiem tra nhan vien
+select * from NhanVien nv
+where nv.MaNhanVien like 'NV21T';
