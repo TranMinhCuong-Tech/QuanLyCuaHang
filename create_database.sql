@@ -137,6 +137,7 @@ CREATE TABLE ThanhToan (
     NgayThanhToan DATETIME,
     PhuongThucThanhToan NVARCHAR(50),
     SoTien DECIMAL(12,2),
+	TrangThaiThanhToan NVARCHAR(50),
 
     FOREIGN KEY (MaHoaDon) REFERENCES HoaDon(MaHoaDon),
     FOREIGN KEY (MaKhachHang) REFERENCES KhachHang(MaKhachHang)

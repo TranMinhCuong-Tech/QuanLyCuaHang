@@ -25,6 +25,45 @@ begin
 	end catch
 end;
 
+--nhap masanpham voi so luong 10 vao bang chitietnhaphang
+insert into ChiTietNhapHang (MaNhapHang,MaSanPham, SoLuong)
+values ('NH01A','SP01A', 10);
+
+--kierm tra ket qua nhap hang
+SELECT MaSanPham, SoLuong
+FROM ChiTietNhapHang
+WHERE MaSanPham = 'SP01A';
+
+--kiem tra ket quan ban
+SELECT MaSanPham, SoLuong
+FROM ChiTietHoaDon
+WHERE MaSanPham = 'SP01A';
+
+--kiem tra ket quan tonkho
+select dbo.fn_TonKho('SP01A') as SoLuongTon
+
+--thuc hien ban san pham > san phan tonkho
+insert into ChiTietHoaDon (MaHoaDon, MaSanPham, MaKhachHang, MaNhanVien, SoLuong, DonGia)
+values ('HD03A', 'SP01A', 'KH01A', 'NV01A', 800, 40000);
+
+select * from ChiTietHoaDon
+where MaHoaDon like 'HD03A';
+
+select dbo.fn_TonKho('SP01A') as SoLuongTon;
+
+--thuc hien ban san pham < san phan tonkho
+insert into ChiTietHoaDon (MaHoaDon, MaSanPham, MaKhachHang, MaNhanVien, SoLuong, DonGia)
+values ('HD03A', 'SP01A', 'KH01A', 'NV01A', 3, 40000);
+
+--kỉiem tra thong tin hoa don xem co ton tai hoa don 'HD03A' 
+--neu ton tai --> hop le
+--nguoc lai --> khong hoip le
+select * from ChiTietHoaDon where MaHoaDon like 'HD03A';
+
+--kiem tra san pham ton kho duoc cap nhat
+select dbo.fn_TonKho('SP01A') as SoLuongTon;
+
+--==================================================================================================
 
 --triger rollback khi update gia bat thuong
 create or alter trigger trg_SanPham_Rollback
@@ -45,62 +84,97 @@ begin
     end
 end;
 
+--kiem tra gia san pham
+select MaSanPham, DonGia from SanPham;
 
---trigger rollback khi nhap hang bat thuong
-create or alter trigger trg_NhapHang_Rollback
-on ChiTietNhapHang
-after insert
-as
-begin
-	set nocount on;
-	begin try
-		if exists (
-			select 1 from inserted
-			where SoLuong > 5000
-		)
-		begin
-			throw 50005, N'So luong nhap vuot han cho phep',1;
-		end
+--tang gia san pham SP01A len 5 lan
+update SanPham
+set DonGia = DonGia * 5
+where MaSanPham like 'SP01A';
 
-		if exists(
-			select 1 from inserted as i
-			join SanPham as sp on i.MaSanPham = sp.MaSanPham
-			where i.DonGiaNhapHang > sp.DonGia
-		)
-		begin
-			throw 50006,N'Gia nhap khong duoc lon hon gia ban', 1;
-		end
-	end try
-	begin catch
-		rollback transaction;
-		print N'Rollback do nhap hang bat thuong';
-	end catch
-end;
+--tang gia san pham SP01A len 1.2 lan
+update SanPham
+set DonGia = DonGia * 1.2
+where MaSanPham like 'SP01A';
+
+select MaSanPham, DonGia from SanPham
+where MaSanPham like 'SP01A';
+
+--=================================================================================
 
 
 --trigger rollback khi thanh toan sai tien
-create or alter trigger trg_ThanhToan_Rollback
-on ThanhToan
-after insert
-as
-begin
-	set nocount on;
-	begin try
-		if exists (
-			select 1
-			from inserted as i
-			join HoaDon as hd on i.MaHoaDon = hd.MaHoaDon
-			where i.SoTien <> hd.TongTien
-		)
-		begin
-			throw 50001, N'So tien thanh toan khong khop voi hoa don',1;
-		end;
-	end try
-	begin catch
-		rollback transaction;
-		print N'Du lieu bi rollback do loi thanh toan';
-	end catch
-end;
+CREATE OR ALTER TRIGGER trg_ThanhToan_Update_Check
+ON ThanhToan
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    -- neu tang thai thanh toan da hoan thanh --> khong update
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN deleted d 
+            ON i.MaThanhToan = d.MaThanhToan
+        WHERE d.TrangThaiThanhToan = N'Hoan Thanh'
+    )
+    BEGIN
+        PRINT N'Ma thanh toan nay da hoan thanh thanh toan roi';
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END;
+
+    -- kiem tra so tien can thanh toan
+    -- neu thieu tien
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN HoaDon hd 
+            ON i.MaHoaDon = hd.MaHoaDon
+        WHERE i.SoTien < hd.TongTien
+    )
+    BEGIN
+        PRINT N'So tien thanh toan khong du';
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END;
+
+    --  neu so tien thanh toan dung --> cap nhat trang thai hoan thanh
+    UPDATE tt
+    SET TrangThaiThanhToan = N'Hoan Thanh'
+    FROM ThanhToan tt
+    JOIN inserted i 
+        ON tt.MaThanhToan = i.MaThanhToan
+    JOIN HoaDon hd 
+        ON i.MaHoaDon = hd.MaHoaDon
+    WHERE i.SoTien = hd.TongTien;
+
+    -- neu so tien lon hon --> in ra tien thua
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN HoaDon hd 
+            ON i.MaHoaDon = hd.MaHoaDon
+        WHERE i.SoTien > hd.TongTien
+    )
+    BEGIN
+        DECLARE @TienThua DECIMAL(12,2);
+
+        SELECT @TienThua = i.SoTien - hd.TongTien
+        FROM inserted i
+        JOIN HoaDon hd 
+            ON i.MaHoaDon = hd.MaHoaDon;
+
+        PRINT N'So tien thua: ' + CAST(@TienThua AS NVARCHAR);
+    END;
+
+END;
+
+--thong tin hoa don dua thanh toan
+select * from ThanhToan tt
+where TrangThaiThanhToan like 'Chua Hoan Thanh';
+
+
 
 --trigger kiem tra email
 create or alter trigger trg_Email_KhachHang
